@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="X.PagedList" Version="10.5.3" />
+    <PackageReference Include="X.PagedList.Mvc.Core" Version="10.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Bank.DAL\Bank.DAL.csproj" />
+    <ProjectReference Include="..\..\Bank.DTO\Bank.DTO.csproj" />
+  </ItemGroup>
+
+</Project>

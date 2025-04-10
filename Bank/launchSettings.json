@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "serviceActions": {
+        "userservice": "StartDebugging",
+        "core": "StartDebugging",
+        "creditservice": "StartDebugging",
+        "identityserver": "StartDebugging",
+        "storageservice": "StartDebugging"
+      }
+    }
+  }
+}

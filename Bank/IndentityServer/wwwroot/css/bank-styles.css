@@ -1,0 +1,51 @@
+﻿:root {
+    --primary-color: #003366; /* Темно-синий */
+    --secondary-color: #0066cc; /* Светло-синий */
+    --light-gray: #f5f5f5; /* Светло-серый фон */
+    --white: #ffffff; /* Белый */
+    --success-color: #28a745; /* Зеленый */
+    --danger-color: #dc3545; /* Красный */
+}
+
+body {
+    background-color: var(--light-gray);
+    font-family: 'Arial', sans-serif;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+    }
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+.form-control:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+a {
+    color: var(--secondary-color);
+}
+
+    a:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }

@@ -134,6 +134,18 @@ services:
     networks:
       - usernetwork
 
+  loggingservice:
+    image: ${DOCKER_REGISTRY-}loggingservice
+    build:
+      context: .
+      dockerfile: LoggingService/Dockerfile
+    ports:
+      - "5006:8080"
+    depends_on:
+      - redis_cache
+      - elasticsearch
+    networks:
+      - usernetwork
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -148,7 +160,39 @@ services:
       retries: 5
       start_period: 10s
 
-  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - usernetwork
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://158.160.18.15:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - usernetwork
+    depends_on:
+      - elasticsearch
+
+  redis_cache:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - usernetwork
 
 networks:
    usernetwork:
@@ -159,4 +203,6 @@ volumes:
    bankcoredb_data:
    bankauthdb_data:
    bankstoragedb_data:
+   elasticsearch-data:
+
 

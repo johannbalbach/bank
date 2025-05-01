@@ -1,22 +1,26 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using Core.DAL;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 
 namespace Core.BL.MassTransit.Consumers
 {
-    public class GetBankAccountBalanceConsumerCore : IConsumer<GetBankAccountBalanceRequest>
+    public class GetBankAccountBalanceConsumerCore : BaseConsumer<GetBankAccountBalanceRequest>
     {
         public CoreDbContext _coreDbContext;
 
-        public GetBankAccountBalanceConsumerCore(CoreDbContext coreDbContext)
+        public GetBankAccountBalanceConsumerCore(CoreDbContext coreDbContext, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+            : base(idempotencyService, serviceProvider)
         {
             _coreDbContext = coreDbContext;
         }
 
-        public async Task Consume(ConsumeContext<GetBankAccountBalanceRequest> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(GetBankAccountBalanceRequest message)
         {
-            var getBankAccountRequest = context.Message;
+            var getBankAccountRequest = message;
 
             var creditBankAccount = await _coreDbContext.CreditBankAccounts
                                     .Select(x => new GetBankAccountBalanceCommand
@@ -28,7 +32,12 @@ namespace Core.BL.MassTransit.Consumers
                                     .FirstOrDefaultAsync(x => x.Id == getBankAccountRequest.BankAccountId)
                                     ?? throw new KeyNotFoundException($"Bank account with id {getBankAccountRequest.BankAccountId} was not found");
 
-            await context.RespondAsync(creditBankAccount);
+            return creditBankAccount;
+        }
+
+        protected override async Task SendResponse(ConsumeContext<GetBankAccountBalanceRequest> context, baseResponse response)
+        {
+            await context.RespondAsync((GetBankAccountBalanceCommand)response);
         }
     }
 }

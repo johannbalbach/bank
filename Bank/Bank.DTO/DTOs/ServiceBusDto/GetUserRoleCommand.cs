@@ -2,7 +2,7 @@
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class GetUserRoleCommand
+    public class GetUserRoleCommand: baseResponse
     {
         public UserRole Role { get; set; }
     }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class CreateTariffEvent
+    public class CreateTariffEvent: baseMessage
     {
         public Guid Id { get; set; }
         public string Name { get; set; }

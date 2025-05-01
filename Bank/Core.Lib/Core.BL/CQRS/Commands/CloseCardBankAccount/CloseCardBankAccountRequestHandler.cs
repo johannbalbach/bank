@@ -1,9 +1,12 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Bank.DTO.DTOs.ServiceBusDto;
 using Core.BL.CQRS.Base;
 using Core.BL.Services.BankAccounts.BankAccountsValidation;
 using Core.DAL;
 using MassTransit;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Core.BL.CQRS.Commands.CloseCardBankAccount
@@ -12,13 +15,15 @@ namespace Core.BL.CQRS.Commands.CloseCardBankAccount
     {
         private CoreDbContext _coreDbContext;
         private IRequestClient<IsUserBlockedRequest> _requestClient;
+        private IRedisMessagingFacade _redisMessagingFacade;
 
         private BankAccountValidationIsFrozen _handler;
 
-        public CloseCardBankAccountRequestHandler(CoreDbContext coreDbContext, IRequestClient<IsUserBlockedRequest> requestClient)
+        public CloseCardBankAccountRequestHandler(CoreDbContext coreDbContext, IRequestClient<IsUserBlockedRequest> requestClient, IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
             _requestClient = requestClient;
+            _redisMessagingFacade = redisMessagingFacade;
 
             _handler = new();
             _handler.ConnectHandler(new BankAccountValidationIsClosed().ConnectHandler(new NullHandler()));
@@ -55,6 +60,8 @@ namespace Core.BL.CQRS.Commands.CloseCardBankAccount
             _coreDbContext.Entry(cardBankAccount).State = EntityState.Modified;
 
             await _coreDbContext.SaveChangesAsync(cancellationToken);
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, $"Bank account {cardBankAccount.Id} was closed", StatusCodes.Status200OK);
 
             return new CloseCardBankAccountResponse();
         }

@@ -1,5 +1,6 @@
 using Bank.BL;
 using Bank.BL.ExceptionHandler;
+using Bank.BL.Redis.Middleware;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -46,6 +47,8 @@ builder.Services.AddCors(action =>
 
 builder.Services.AddScoped<IUserService, UserService.Services.UserService>();
 builder.Services.AddScoped<IUserRequestService, UserRequestService>();
+builder.Services.AddIdempotencyService();
+builder.Services.AddRedis(builder.Configuration);
 
 var app = builder.Build();
 
@@ -61,11 +64,17 @@ using (var scope = app.Services.CreateScope())
 
 app.UseHttpsRedirection();
 
+app.UseRedisMessageMiddleware();
+
 app.UseAuthentication();
 
 app.UseCors("UserCors");
 
 app.UseAuthorization();
+
+app.UseIdempotencyMiddleware();
+
+app.UseUnstableMiddleware();
 
 app.UseExceptionHandler();
 

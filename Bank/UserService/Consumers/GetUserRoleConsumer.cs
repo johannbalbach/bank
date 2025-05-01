@@ -1,24 +1,28 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using MassTransit;
 using UserService.Interfaces;
 
 namespace UserService.Consumers
 {
-    public class GetUserRoleConsumer: IConsumer<GetUserRoleRequest>
+    public class GetUserRoleConsumer: BaseConsumer<GetUserRoleRequest>
     {
         private readonly IUserRequestService _userService;
-        public GetUserRoleConsumer(IUserRequestService userService)
+        public GetUserRoleConsumer(IUserRequestService userService, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+            : base(idempotencyService, serviceProvider)
         {
             _userService = userService;
         }
 
-        public async Task Consume(ConsumeContext<GetUserRoleRequest> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(GetUserRoleRequest message)
         {
-            var req = new GetUserRoleCommand();
-            if (context.Message.UserId != null)
-                req = await _userService.GetUserRole(context.Message.UserId);
+            return await _userService.GetUserRole(message.UserId);
+        }
 
-            await context.RespondAsync(req);
+        protected override async Task SendResponse(ConsumeContext<GetUserRoleRequest> context, baseResponse response)
+        {
+            await context.RespondAsync((GetUserRoleCommand)response);
         }
     }
 }

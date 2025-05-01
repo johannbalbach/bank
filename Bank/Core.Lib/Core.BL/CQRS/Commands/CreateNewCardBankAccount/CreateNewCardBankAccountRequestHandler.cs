@@ -1,4 +1,6 @@
 ﻿using Bank.BL.Other;
+using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
 using Bank.BL.Values;
 using Bank.DAL.Enums;
 using Bank.DTO.DTOs.ServiceBusDto;
@@ -9,6 +11,7 @@ using Core.DAL.Models.Cards;
 using Core.DTO.DTOs.Requests.BankAccount;
 using MassTransit;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Core.BL.CQRS.Commands.CreateNewCardBankAccount
@@ -17,11 +20,13 @@ namespace Core.BL.CQRS.Commands.CreateNewCardBankAccount
     {
         private CoreDbContext _coreDbContext;
         private IRequestClient<IsUserBlockedRequest> _requestClient;
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
-        public CreateNewCardBankAccountRequestHandler(CoreDbContext coreDbContext, IRequestClient<IsUserBlockedRequest> requestClient)
+        public CreateNewCardBankAccountRequestHandler(CoreDbContext coreDbContext, IRequestClient<IsUserBlockedRequest> requestClient, IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
             _requestClient = requestClient;
+            _redisMessagingFacade = redisMessagingFacade;
         }
 
         public async Task<CreateNewCardBankAccountResponse> Handle(MediatorRequest<DebitCardBankAccountCreateRequestDTO, CreateNewCardBankAccountResponse> request, CancellationToken cancellationToken)
@@ -61,6 +66,8 @@ namespace Core.BL.CQRS.Commands.CreateNewCardBankAccount
             await _coreDbContext.CardBankAccounts.AddAsync(cardBankAccount, cancellationToken);
 
             await _coreDbContext.SaveChangesAsync(cancellationToken);
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, "Card bank account was created", StatusCodes.Status200OK);
 
             return new CreateNewCardBankAccountResponse
             {

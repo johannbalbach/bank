@@ -1,15 +1,19 @@
-﻿using Bank.DAL.Enums;
+﻿using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Bank.DAL.Enums;
 using Bank.DTO.DTOs.ServiceBusDto;
 using Core.BL.CQRS.Base;
 using Core.BL.Services.BankAccounts.BankAccountService;
 using Core.BL.Services.BankAccounts.BankAccountsValidation;
 using Core.BL.Services.BankAccounts.CreditBankAccountService;
+using Core.BL.Services.Firebase;
 using Core.BL.SignalR;
 using Core.DAL;
 using Core.DAL.Models.BankAccounts;
 using Core.DAL.Models.History;
 using MassTransit;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -23,6 +27,8 @@ namespace Core.BL.CQRS.Commands.PutMoneyOnCreditBankAccount
         private IRequestClient<IsUserBlockedRequest> _requestClient;
         private IHubContext<CoreSignalRHub, ICoreHub> _hub;
         private IBankAccountService _bankAccountService;
+        private readonly IFirebaseService _firebaseService;
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
         private BankAccountValidationIsClosed _handler;
 
@@ -31,13 +37,17 @@ namespace Core.BL.CQRS.Commands.PutMoneyOnCreditBankAccount
             ICreditBankAccountService creditBankAccountService,
             IRequestClient<IsUserBlockedRequest> requestClient,
             IHubContext<CoreSignalRHub, ICoreHub> hub,
-            IBankAccountService bankAccountService) 
+            IBankAccountService bankAccountService,
+            IFirebaseService firebaseService,
+            IRedisMessagingFacade redisMessagingFacade) 
         {
             _coreDbContext = coreDbContext;
             _creditBankAccountService = creditBankAccountService;
             _requestClient = requestClient;
             _hub = hub;
             _bankAccountService = bankAccountService;
+            _firebaseService = firebaseService;
+            _redisMessagingFacade = redisMessagingFacade;
 
             _handler = new();
             _handler.ConnectHandler(new NullHandler());
@@ -131,6 +141,23 @@ namespace Core.BL.CQRS.Commands.PutMoneyOnCreditBankAccount
             {
                 await _hub.Clients.Group(request.MetaData.UserId.ToString()).OperationCreated(serialize);
             }
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, $"Payed loan of credit bank account with id {creditBankAccount.Id}", StatusCodes.Status200OK);
+
+            await _firebaseService.SendFirebasePushMessage(request.MetaData, new()
+            {
+                UserNotification = new()
+                {
+                    Title = "Погашение кредита",
+                    Body = $"Погашение кредита счёта {creditBankAccount.AccountName} на сумму {request.Request.RequestDTO.Money} {request.Request.RequestDTO.CurrencyType}"
+                },
+                EmployeesNotification = new()
+                {
+                    Title = "Погашение кредита",
+                    Body = $"Пользователь с id {request.MetaData.UserId} погасил кредит счёта с id {creditBankAccount.Id} ({creditBankAccount.AccountName}) " +
+                    $"на сумму {request.Request.RequestDTO.Money} {request.Request.RequestDTO.CurrencyType}"
+                }
+            });
 
             return new PutMoneyOnCreditBankAccountResponse();
         }

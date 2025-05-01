@@ -42,5 +42,31 @@ namespace UserService.Services
 
             return new GetUserRoleCommand { Role = user.Role};
         }
+        public async Task CreateUser(CreateUserEvent user)
+        {
+            var createUserEvent = user;
+
+            bool userExists = await _context.Users.AnyAsync(x => x.Id == createUserEvent.Id);
+
+            if (userExists)
+            {
+                return;
+            }
+
+            var User = new Db.Entities.User
+            {
+                Id = createUserEvent.Id,
+                UserName = createUserEvent.UserName,
+                Email = createUserEvent.Email,
+                IsManuallyBlocked = false,
+                Role = createUserEvent.Role,
+                CreateDateTime = DateTime.UtcNow,
+                Password = ""
+            };
+
+            await _context.Users.AddAsync(User);
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class IsUserExistCommand
+    public class IsUserExistCommand: baseResponse
     {
         public bool IsExist { get; set; }
     }

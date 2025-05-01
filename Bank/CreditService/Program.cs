@@ -1,5 +1,6 @@
 using Bank.BL;
 using Bank.BL.ExceptionHandler;
+using Bank.BL.Redis.Middleware;
 using Bank.DAL.Enums;
 using CreditService.Db;
 using CreditService.Interfaces;
@@ -32,6 +33,7 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddSwaggerSettings();
 builder.Services.AddGlobalExceptionHandler();
 builder.Services.AddAuth();
+builder.Services.AddRedis(builder.Configuration);
 
 builder.Services.AddCors(action =>
 {
@@ -44,6 +46,7 @@ builder.Services.AddCors(action =>
 builder.Services.AddDbContext<CreditDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ICreditService, CreditService.Services.CreditService>();
+builder.Services.AddIdempotencyService();
 
 var app = builder.Build();
 
@@ -59,11 +62,17 @@ using (var scope = app.Services.CreateScope())
 
 app.UseHttpsRedirection();
 
+app.UseRedisMessageMiddleware();
+
 app.UseAuthentication();
 
 app.UseCors("CreditCors");
 
 app.UseAuthorization();
+
+app.UseIdempotencyMiddleware();
+
+app.UseUnstableMiddleware();
 
 app.UseExceptionHandler();
 

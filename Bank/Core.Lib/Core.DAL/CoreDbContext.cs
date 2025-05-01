@@ -36,6 +36,8 @@ namespace Core.DAL
 
         public DbSet<CurrencyType> Currencies { get; set; }
 
+        public DbSet<DeviceToken> DeviceTokens { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -52,6 +54,7 @@ namespace Core.DAL
             modelBuilder.ApplyConfiguration(new BankAccountOperationsHistoryConfiguration());
 
             modelBuilder.ApplyConfiguration(new CurrencyConfiguration());
+            modelBuilder.ApplyConfiguration(new DeviceTokenConfiguration());
         }
     }
 }

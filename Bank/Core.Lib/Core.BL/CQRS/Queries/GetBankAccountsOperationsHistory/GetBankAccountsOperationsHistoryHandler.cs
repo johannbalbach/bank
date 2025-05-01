@@ -1,4 +1,6 @@
 ﻿using Bank.BL.Extensions;
+using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
 using Bank.BL.Values;
 using Core.BL.CQRS.Base;
 using Core.BL.Extensions;
@@ -6,6 +8,7 @@ using Core.DAL;
 using Core.DTO.DTOs.Requests.History;
 using Core.DTO.DTOs.Responses.History;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Core.BL.CQRS.Queries.GetBankAccountsOperationsHistory
@@ -14,10 +17,12 @@ namespace Core.BL.CQRS.Queries.GetBankAccountsOperationsHistory
     {
 
         private CoreDbContext _coreDbContext;
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
-        public GetBankAccountsOperationsHistoryHandler(CoreDbContext coreDbContext)
+        public GetBankAccountsOperationsHistoryHandler(CoreDbContext coreDbContext, IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
+            _redisMessagingFacade = redisMessagingFacade;
         }
 
         public async Task<BankAccountOperationsHistoryListDTO> Handle(MediatorRequest<BankAccountOperationsHistoryQueryDTO, BankAccountOperationsHistoryListDTO> request, CancellationToken cancellationToken)
@@ -65,6 +70,8 @@ namespace Core.BL.CQRS.Queries.GetBankAccountsOperationsHistory
             }
 
             (var resultList, var metadata) = await operationsHistory.ToPagedListAsync(request.Request.page, 1000);
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, "Getting bank accounts history", StatusCodes.Status200OK);
 
             return new BankAccountOperationsHistoryListDTO
             {

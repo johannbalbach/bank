@@ -1,7 +1,10 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using Core.DAL;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,18 +13,18 @@ using System.Threading.Tasks;
 
 namespace Core.BL.MassTransit.Consumers
 {
-    public class GetBankAccountHistoryConsumerCore: IConsumer<GetBankAccountHistoryRequest>
+    public class GetBankAccountHistoryConsumerCore: BaseConsumer<GetBankAccountHistoryRequest>
     {
         public CoreDbContext _coreDbContext;
 
-        public GetBankAccountHistoryConsumerCore(CoreDbContext coreDbContext)
+        public GetBankAccountHistoryConsumerCore(CoreDbContext coreDbContext, IIdempotencyService idempotencyService, IServiceProvider serviceProvider) : base(idempotencyService, serviceProvider)
         {
             _coreDbContext = coreDbContext;
         }
 
-        public async Task Consume(ConsumeContext<GetBankAccountHistoryRequest> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(GetBankAccountHistoryRequest message)
         {
-            var getBankAccountRequest = context.Message;
+            var getBankAccountRequest = message;
 
             var bankAccountHistoryList = await _coreDbContext.BankAccountOperationsHistory
                 .Where(x => x.BankAccountId == getBankAccountRequest.BankAccountId)
@@ -40,9 +43,14 @@ namespace Core.BL.MassTransit.Consumers
                 .ToListAsync()
                 ?? throw new KeyNotFoundException($"Some unexpected error while getting bank account history list");
 
-            GetBankAccountHistoryCommand result = new GetBankAccountHistoryCommand {getBankAccountHistoryCommandDtos = bankAccountHistoryList};
+            GetBankAccountHistoryCommand result = new GetBankAccountHistoryCommand { getBankAccountHistoryCommandDtos = bankAccountHistoryList };
 
-            await context.RespondAsync(result);
+            return result;
+        }
+
+        protected override async Task SendResponse(ConsumeContext<GetBankAccountHistoryRequest> context, baseResponse response)
+        {
+            await context.RespondAsync((GetBankAccountHistoryCommand)response);
         }
     }
 }

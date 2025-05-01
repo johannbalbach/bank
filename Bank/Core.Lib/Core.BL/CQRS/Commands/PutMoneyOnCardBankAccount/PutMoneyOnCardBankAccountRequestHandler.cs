@@ -1,14 +1,18 @@
-﻿using Bank.DAL.Enums;
+﻿using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Bank.DAL.Enums;
 using Bank.DTO.DTOs.ServiceBusDto;
 using Core.BL.CQRS.Base;
 using Core.BL.Services.BankAccounts.BankAccountService;
 using Core.BL.Services.BankAccounts.BankAccountsValidation;
+using Core.BL.Services.Firebase;
 using Core.BL.SignalR;
 using Core.DAL;
 using Core.DAL.Models.History;
 using Core.DTO.DTOs.Requests.BankAccount;
 using MassTransit;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -22,6 +26,8 @@ namespace Core.BL.CQRS.Commands.PutMoneyOnBankAccount
         private IRequestClient<IsUserBlockedRequest> _requestClient;
         private IBankAccountService _bankAccountService;
         private IHubContext<CoreSignalRHub, ICoreHub> _hub;
+        private readonly IFirebaseService _firebaseService;
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
         private BankAccountValidationIsFrozen _handler;
 
@@ -29,12 +35,16 @@ namespace Core.BL.CQRS.Commands.PutMoneyOnBankAccount
             CoreDbContext coreDbContext,
             IRequestClient<IsUserBlockedRequest> requestClient,
             IHubContext<CoreSignalRHub, ICoreHub> hub,
-            IBankAccountService bankAccountService)
+            IBankAccountService bankAccountService,
+            IFirebaseService firebaseService,
+            IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
             _requestClient = requestClient;
             _hub = hub;
             _bankAccountService = bankAccountService;
+            _firebaseService = firebaseService;
+            _redisMessagingFacade = redisMessagingFacade;
 
             _handler = new();
             _handler.ConnectHandler(new BankAccountValidationIsClosed().ConnectHandler(new NullHandler()));
@@ -109,6 +119,23 @@ namespace Core.BL.CQRS.Commands.PutMoneyOnBankAccount
             {
                 await _hub.Clients.Group(request.MetaData.UserId.ToString()).OperationCreated(serialize);
             }
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, $"Put money on card bank account with id {cardBankAccount.Id}", StatusCodes.Status200OK);
+
+            await _firebaseService.SendFirebasePushMessage(request.MetaData, new()
+            {
+                UserNotification = new()
+                {
+                    Title = "Пополнение счёта",
+                    Body = $"Пополнение дебетового счёта {cardBankAccount.AccountName} на сумму {request.Request.RequestDTO.Money} {request.Request.RequestDTO.CurrencyType}"
+                },
+                EmployeesNotification = new()
+                {
+                    Title = "Пополнение счёта",
+                    Body = $"Пользователь с id {request.MetaData.UserId} пополнил дебетовый счёт с id {cardBankAccount.Id} ({cardBankAccount.AccountName}) " +
+                    $"на сумму {request.Request.RequestDTO.Money} {request.Request.RequestDTO.CurrencyType}"
+                }
+            });
 
             return new PutMoneyOnCardBankAccountResponse();
         }

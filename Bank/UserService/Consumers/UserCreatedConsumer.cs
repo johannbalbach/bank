@@ -1,44 +1,38 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 using UserService.Db;
+using UserService.Interfaces;
 
 namespace UserService.Consumers
 {
-    public class UserCreatedConsumer : IConsumer<CreateUserEvent>
+    public class UserCreatedConsumer : BaseConsumer<CreateUserEvent>
     {
-        private readonly UserDbContext _context;
+        private readonly IUserRequestService _userService;
 
-        public UserCreatedConsumer(UserDbContext coreDbContext)
+        public UserCreatedConsumer(IUserRequestService userService, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+        : base(idempotencyService, serviceProvider)
         {
-            _context = coreDbContext;
+            _userService = userService;
         }
 
-        public async Task Consume(ConsumeContext<CreateUserEvent> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(CreateUserEvent message)
         {
-            var createUserEvent = context.Message;
-
-            bool userExists = await _context.Users.AnyAsync(x => x.Id == createUserEvent.Id);
-
-            if (userExists)
+            if (message != null)
             {
-                return;
+                await _userService.CreateUser(message);
+
+                return new NoResponse();
             }
+            return new NoResponse();
+        }
 
-            var User = new Db.Entities.User
-            {
-                Id = createUserEvent.Id,
-                UserName = createUserEvent.UserName,
-                Email = createUserEvent.Email,
-                IsManuallyBlocked = false,
-                Role = createUserEvent.Role,
-                CreateDateTime = DateTime.UtcNow,
-                Password = ""
-            };
+        protected override async Task SendResponse(ConsumeContext<CreateUserEvent> context, baseResponse response)
+        {
 
-            await _context.Users.AddAsync(User);
-
-            await _context.SaveChangesAsync();
         }
     }
 }

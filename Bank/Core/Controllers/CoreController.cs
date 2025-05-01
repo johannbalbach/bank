@@ -5,6 +5,7 @@ using Core.BL.CQRS.Commands.CloseCardBankAccount;
 using Core.BL.CQRS.Commands.CreateNewCardBankAccount;
 using Core.BL.CQRS.Commands.PutMoneyOnBankAccount;
 using Core.BL.CQRS.Commands.PutMoneyOnCreditBankAccount;
+using Core.BL.CQRS.Commands.StoreDeviceToken;
 using Core.BL.CQRS.Commands.TransferMoneyBetweenBankAccounts;
 using Core.BL.CQRS.Commands.WithdrawMoneyFromCardBankAccount;
 using Core.BL.CQRS.Commands.WithdrawMoneyFromCreditBankAccount;
@@ -350,6 +351,22 @@ namespace Core.Controllers
             }
         }
 
+        [HttpPost]
+        [Route("device/token")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [Produces("application/json")]
+        public async Task<IActionResult> DeviceToken([FromBody] StoreDeviceTokenRequest request)
+        {
+            try
+            {
+                return Ok(await SendWithMedata<StoreDeviceTokenRequest, StoreDeviceTokenResponse>(request));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message);
+                return BadRequest(e.Message);
+            }
+        }
 
         [HttpGet]
         [Route("account/curs")]

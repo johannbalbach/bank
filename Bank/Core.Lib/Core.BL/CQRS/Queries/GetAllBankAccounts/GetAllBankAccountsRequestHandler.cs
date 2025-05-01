@@ -1,4 +1,6 @@
-﻿using Bank.BL.Values;
+﻿using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Bank.BL.Values;
 using Bank.DAL;
 using Core.BL.CQRS.Base;
 using Core.BL.Extensions;
@@ -7,6 +9,7 @@ using Core.DAL.Models.BankAccounts;
 using Core.DTO.DTOs.Requests.BankAccount;
 using Core.DTO.DTOs.Responses.BankAccounts;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using X.PagedList.Extensions;
 
@@ -16,10 +19,12 @@ namespace Core.BL.CQRS.Queries.GetAllBankAccounts
     {
 
         private readonly CoreDbContext _coreDbContext;
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
-        public GetAllBankAccountsRequestHandler(CoreDbContext coreDbContext)
+        public GetAllBankAccountsRequestHandler(CoreDbContext coreDbContext, IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
+            _redisMessagingFacade = redisMessagingFacade;
         }
 
         public async Task<BankAccountsListDTO> Handle(MediatorRequest<AllBankAccountsQueryDTO, BankAccountsListDTO> request, CancellationToken cancellationToken)
@@ -58,6 +63,8 @@ namespace Core.BL.CQRS.Queries.GetAllBankAccounts
             var creditBankAccounts = bankAccountsPagedList.OfType<CreditBankAccount>().Select(x => x.CreditBankAccountToDTOShort());
 
             var resultList = cardBankAccounts.Concat(creditBankAccounts).OrderByDescending(x => x.BankAccount.CreateDateTime).ToList();
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, "Get all bank accounts", StatusCodes.Status200OK);
 
             return new BankAccountsListDTO
             {

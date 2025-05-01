@@ -1,22 +1,26 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using Core.DAL;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 
 namespace Core.BL.MassTransit.Consumers
 {
-    public class UpdateBankAccountConsumerCore : IConsumer<UpdateBankAccountEvent>
+    public class UpdateBankAccountConsumerCore : BaseConsumer<UpdateBankAccountEvent>
     {
         private CoreDbContext _coreDbContext;
 
-        public UpdateBankAccountConsumerCore(CoreDbContext coreDbContext)
+        public UpdateBankAccountConsumerCore(CoreDbContext coreDbContext, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+            : base(idempotencyService, serviceProvider)
         {
             _coreDbContext = coreDbContext;
         }
 
-        public async Task Consume(ConsumeContext<UpdateBankAccountEvent> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(UpdateBankAccountEvent message)
         {
-            var updateBankAccountEvent = context.Message;
+            var updateBankAccountEvent = message;
 
             var creditBankAccount = await _coreDbContext.CreditBankAccounts
                                     .FirstOrDefaultAsync(x => x.Id == updateBankAccountEvent.Id)
@@ -27,6 +31,13 @@ namespace Core.BL.MassTransit.Consumers
             _coreDbContext.Entry(creditBankAccount).State = EntityState.Modified;
 
             await _coreDbContext.SaveChangesAsync();
+
+            return new NoResponse();
+        }
+
+        protected override async Task SendResponse(ConsumeContext<UpdateBankAccountEvent> context, baseResponse response)
+        {
+
         }
     }
 }

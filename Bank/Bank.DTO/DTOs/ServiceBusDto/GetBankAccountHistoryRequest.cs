@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class GetBankAccountHistoryRequest
+    public class GetBankAccountHistoryRequest: baseMessage
     {
         public Guid BankAccountId { get; set; }
     }

@@ -19,7 +19,7 @@ namespace Bank.DTO.DTOs.ServiceBusDto
         public Guid? UserId { get; set; }
         public Guid BankAccountId { get; set; }
     }
-    public class GetBankAccountHistoryCommand
+    public class GetBankAccountHistoryCommand: baseResponse
     {
         public List<GetBankAccountHistoryCommandDto> getBankAccountHistoryCommandDtos { get; set; } = new List<GetBankAccountHistoryCommandDto>();
     }

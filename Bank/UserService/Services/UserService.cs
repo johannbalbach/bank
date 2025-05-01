@@ -29,41 +29,6 @@ namespace UserService.Services
             _configuration = configuration;
             _publishEndpoint = publishEndpoint;
         }
-
-        public async Task<UserDto> RegisterUser(UserRegisterDto userDto)
-        {
-            if (await _context.Users.AnyAsync(u => u.Email == userDto.Email && !u.DeleteDateTime.HasValue))
-            {
-                throw new InvalidOperationException("Пользователь с таким email уже существует.");
-            }
-
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDto.Password);
-
-            var user = new User
-            {
-                UserName = userDto.UserName,
-                Patronymic = userDto.UserName.ToLower().Normalize(),
-                Email = userDto.Email,
-                Password = hashedPassword,
-                Role = userDto.Role,
-                IsManuallyBlocked = false
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            await _publishEndpoint.Publish(new CreateUserEvent
-            {
-                Id = user.Id,
-                UserName = user.UserName, 
-                Email = user.Email,
-                Password = user.Password,
-                IsManuallyBlocked = false,
-            });
-
-            return MapToUserDto(user);
-        }
-
         public async Task<UserDto> GetUserById(Guid userId)
         {
             var user = await _context.Users
@@ -168,22 +133,6 @@ namespace UserService.Services
             return true;
         }
 
-        public async Task<TokenResponseDto> Login(LoginRequestDto loginRequest)
-        {
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == loginRequest.Email && !u.DeleteDateTime.HasValue);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
-                throw new InvalidLoginException("Неверный email или пароль.");
-
-            var token = GenerateJwtToken(user);
-            return new TokenResponseDto
-            {
-                Token = token,
-                Expires = DateTime.UtcNow.AddHours(48)
-            };
-        }
-
         public async Task<UserRole> CheckRole(Guid userId)
         {
             var user = await _context.Users
@@ -193,49 +142,6 @@ namespace UserService.Services
                 throw new NotFoundException("Пользователь не найден.");
 
             return user.Role;
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role.ToString()),
-                new Claim("UserId", user.Id.ToString())
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(48),
-                signingCredentials: creds);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-        private async Task CreateUserEvent(User user)
-        {
-            var @event = new CreateUserEvent
-            {
-                Id = user.Id,
-                IsManuallyBlocked = user.IsManuallyBlocked,
-                Email = user.Email,
-                Password = user.Password,
-                Role = user.Role,
-                UserName = user.UserName,
-            };
-            try
-            {
-                await _publishEndpoint.Publish(@event);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Не удалось уведомить о создании счета");
-            }
         }
 
         #region

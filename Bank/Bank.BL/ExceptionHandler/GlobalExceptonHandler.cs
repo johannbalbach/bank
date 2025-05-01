@@ -1,6 +1,11 @@
-﻿using Bank.DAL.Exceptions;
+﻿using Bank.BL.Configuration;
+using Bank.BL.Redis;
+using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Bank.DAL.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,9 +17,11 @@ using System.Threading.Tasks;
 
 namespace Bank.BL.ExceptionHandler
 {
-    public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+    public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IServiceProvider serviceProvider) : IExceptionHandler
     {
         ILogger<GlobalExceptionHandler> _logger = logger;
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
+
         public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
         {
             var traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
@@ -27,6 +34,12 @@ namespace Bank.BL.ExceptionHandler
                 ); // optional
 
             var (statusCode, title) = MapException(exception);
+
+            if (Guid.TryParse(httpContext.Items[RedisConfiguration.RedisWatch] as string, out Guid messageId))
+            {
+                var redisFacade = _serviceProvider.GetRequiredService<IRedisMessagingFacade>();
+                await redisFacade.ProcessRedisMessage<RedisMessage>(messageId, title, statusCode);
+            }
 
             await Results.Problem(
                 title: title,
@@ -53,6 +66,7 @@ namespace Bank.BL.ExceptionHandler
                 BadRequestException badRequestException => (StatusCodes.Status400BadRequest, badRequestException.Message),
                 NotFoundException notFoundException => (StatusCodes.Status404NotFound, notFoundException.Message),
                 ForbiddenException forbiddenException => (StatusCodes.Status403Forbidden, forbiddenException.Message),
+                SimulatedException simulatedException => (StatusCodes.Status503ServiceUnavailable, simulatedException.Message),
                 _ => (StatusCodes.Status500InternalServerError, "Some stupid error occured")
             };
         }

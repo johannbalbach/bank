@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class UpdateBankAccountEvent
+    public class UpdateBankAccountEvent: baseMessage
     {
         public Guid Id { get; set; }
         public decimal Debt { get; set; }

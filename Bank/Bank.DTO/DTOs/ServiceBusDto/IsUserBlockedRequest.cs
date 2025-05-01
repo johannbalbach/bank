@@ -1,6 +1,6 @@
 ﻿namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class IsUserBlockedRequest
+    public class IsUserBlockedRequest: baseMessage
     {
         public Guid UserId { get; set; }
     }

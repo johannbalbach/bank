@@ -1,22 +1,26 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using Core.DAL;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 
 namespace Core.BL.MassTransit.Consumers
 {
-    public class CloseBankAccountConsumerCore : IConsumer<CloseBankAccountEvent>
+    public class CloseBankAccountConsumerCore : BaseConsumer<CloseBankAccountEvent>
     {
         private CoreDbContext _coreDbContext;
 
-        public CloseBankAccountConsumerCore(CoreDbContext coreDbContext)
+        public CloseBankAccountConsumerCore(CoreDbContext coreDbContext, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+            : base(idempotencyService, serviceProvider)
         {
             _coreDbContext = coreDbContext;
         }
 
-        public async Task Consume(ConsumeContext<CloseBankAccountEvent> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(CloseBankAccountEvent message)
         {
-            var closeBankAccountEvent = context.Message;
+            var closeBankAccountEvent = message;
 
             var creditBankAccount = await _coreDbContext.CreditBankAccounts
                                     .FirstOrDefaultAsync(x => x.Id == closeBankAccountEvent.Id)
@@ -26,6 +30,13 @@ namespace Core.BL.MassTransit.Consumers
             _coreDbContext.Entry(creditBankAccount).State = EntityState.Modified;
 
             await _coreDbContext.SaveChangesAsync();
+
+            return new NoResponse();
+        }
+
+        protected override async Task SendResponse(ConsumeContext<CloseBankAccountEvent> context, baseResponse response)
+        {
+
         }
     }
 }

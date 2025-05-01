@@ -1,4 +1,6 @@
-﻿using Core.BL.CQRS.Base;
+﻿using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Core.BL.CQRS.Base;
 using Core.BL.Extensions;
 using Core.DAL;
 using Core.DAL.Models.BankAccounts;
@@ -15,10 +17,12 @@ namespace Core.BL.CQRS.Queries.GetCreditBankAccountDetails
     {
 
         private CoreDbContext _coreDbContext { get; set; }
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
-        public GetCreditBankAccountDetailsRequestHandler(CoreDbContext coreDbContext)
+        public GetCreditBankAccountDetailsRequestHandler(CoreDbContext coreDbContext, IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
+            _redisMessagingFacade = redisMessagingFacade;
         }
 
         public async Task<BankAccountCardDTO<CreditBankAccountFullResponseDTO, CreditCardResponseDTO>> Handle(MediatorRequest<GetCreditBankAccountDetailsRequest, BankAccountCardDTO<CreditBankAccountFullResponseDTO, CreditCardResponseDTO>> request, CancellationToken cancellationToken)
@@ -35,6 +39,8 @@ namespace Core.BL.CQRS.Queries.GetCreditBankAccountDetails
             {
                 throw new AccessViolationException($"ERROR");
             }
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, "Details of card bank account", 200);
 
             return creditBankAccount.CreditBankAccountToDTOFull();
         }

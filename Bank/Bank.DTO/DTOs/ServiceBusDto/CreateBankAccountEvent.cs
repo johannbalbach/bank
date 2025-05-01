@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class CreateBankAccountEvent
+    public class CreateBankAccountEvent: baseMessage
     {
         public Guid Id { get; set; }
         public string AccountNumber { get; set; }

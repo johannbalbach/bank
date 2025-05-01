@@ -15,5 +15,7 @@ namespace Core.BL.CQRS.Base
     {
         public Guid UserId { get; set; }
         public UserRole UserRole { get; set; }
+        public string DeviceName { get; set; }
+        public Guid RedisMessageId { get; set; }
     }
 }

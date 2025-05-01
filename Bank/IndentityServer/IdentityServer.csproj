@@ -26,6 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\Bank.BL\Bank.BL.csproj" />
 	  <ProjectReference Include="..\Bank.DAL\Bank.DAL.csproj" />
 	  <ProjectReference Include="..\Bank.DTO\Bank.DTO.csproj" />
 	</ItemGroup>

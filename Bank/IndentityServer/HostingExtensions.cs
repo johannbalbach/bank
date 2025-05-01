@@ -1,4 +1,5 @@
 using Bank;
+using Bank.BL;
 using Duende.IdentityServer.Services;
 using IdentityServer.Interfaces;
 using IdentityServer.Services;
@@ -35,6 +36,7 @@ namespace IndentityServer
             });
             builder.Services.AddTransient<IUserService, UserService>();
             builder.Services.AddTransient<IProfileService, ProfileService>();
+            builder.Services.AddIdempotencyService();
 
             builder.Services.AddIdentityServer()
                 .AddInMemoryIdentityResources(Config.IdentityResources)

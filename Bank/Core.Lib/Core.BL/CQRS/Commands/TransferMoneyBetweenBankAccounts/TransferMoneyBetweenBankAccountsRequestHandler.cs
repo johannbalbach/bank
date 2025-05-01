@@ -1,4 +1,6 @@
-﻿using Bank.DAL.Enums;
+﻿using Bank.BL.Redis.Messages;
+using Bank.BL.Redis.Patterns;
+using Bank.DAL.Enums;
 using Core.BL.CQRS.Base;
 using Core.BL.CQRS.Commands.PutMoneyOnBankAccount;
 using Core.BL.CQRS.Commands.PutMoneyOnCreditBankAccount;
@@ -7,6 +9,7 @@ using Core.BL.CQRS.Commands.WithdrawMoneyFromCreditBankAccount;
 using Core.DAL;
 using Core.DAL.Models.Base;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Core.BL.CQRS.Commands.TransferMoneyBetweenBankAccounts
@@ -16,11 +19,13 @@ namespace Core.BL.CQRS.Commands.TransferMoneyBetweenBankAccounts
     {
         private readonly CoreDbContext _coreDbContext;
         private readonly IMediator _mediator;
+        private readonly IRedisMessagingFacade _redisMessagingFacade;
 
-        public TransferMoneyBetweenBankAccountsRequestHandler(CoreDbContext coreDbContext, IMediator mediator)
+        public TransferMoneyBetweenBankAccountsRequestHandler(CoreDbContext coreDbContext, IMediator mediator, IRedisMessagingFacade redisMessagingFacade)
         {
             _coreDbContext = coreDbContext;
             _mediator = mediator;
+            _redisMessagingFacade = redisMessagingFacade;
         }
 
         public async Task<TransferMoneyBetweenBankAccountsResponse> Handle(MediatorRequest<TransferMoneyBetweenBankAccountsRequest, TransferMoneyBetweenBankAccountsResponse> request, CancellationToken cancellationToken)
@@ -43,6 +48,8 @@ namespace Core.BL.CQRS.Commands.TransferMoneyBetweenBankAccounts
 
             await ProcessFromAccount(fromBankAccount, request);
             await ProcessToAccount(toBankAccount, request);
+
+            await _redisMessagingFacade.ProcessRedisMessage<RedisMessage>(request.MetaData.RedisMessageId, $"Transfer money from bank account {idsList[0]} to bank account with id {idsList[1]}", StatusCodes.Status200OK);
 
             return new TransferMoneyBetweenBankAccountsResponse();
         }

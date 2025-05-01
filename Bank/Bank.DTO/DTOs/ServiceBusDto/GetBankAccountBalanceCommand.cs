@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class GetBankAccountBalanceCommand
+    public class GetBankAccountBalanceCommand: baseResponse
     {
         public Guid Id { get; set; }
         public decimal Debt { get; set; }

@@ -1,4 +1,5 @@
-﻿using Bank.DAL.Enums;
+﻿using Bank.BL.Configuration;
+using Bank.DAL.Enums;
 using Core.BL.CQRS.Base;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -39,10 +40,19 @@ namespace Core.Controllers.BasedController
                 throw new InvalidDataException($"Invalid role name");
             }
 
+            var deviceName = HttpContext.Request.Headers["DeviceName"];
+
+            if (!Guid.TryParse(HttpContext.Items[RedisConfiguration.RedisWatch] as string, out Guid redisMessageId))
+            {
+                throw new InvalidDataException($"Invalid redis message id");
+            };
+
             return await SendToMediator<TRequest, TResponse>(request, new MediatorMetaData
             {
                 UserId = guidUserId,
-                UserRole = userRoleParsed
+                UserRole = userRoleParsed,
+                DeviceName = deviceName.ToString(),
+                RedisMessageId = redisMessageId
             });
         }
 
@@ -50,7 +60,18 @@ namespace Core.Controllers.BasedController
             where TRequest : class
             where TResponse : class
         {
-            return await SendToMediator<TRequest, TResponse>(request);
+            var deviceName = HttpContext.Request.Headers["DeviceName"];
+
+            if (!Guid.TryParse(HttpContext.Items[RedisConfiguration.RedisWatch] as string, out Guid redisMessageId))
+            {
+                throw new InvalidDataException($"Invalid redis message id");
+            };
+
+            return await SendToMediator<TRequest, TResponse>(request, new MediatorMetaData
+            {
+                DeviceName = deviceName.ToString(),
+                RedisMessageId = redisMessageId
+            });
         }
 
         private async Task<TResponse> SendToMediator<TRequest, TResponse>(TRequest request, MediatorMetaData? metaData = null)

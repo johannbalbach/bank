@@ -1,4 +1,6 @@
-﻿using Bank.BL.Other;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Other;
+using Bank.BL.Services;
 using Bank.BL.Values;
 using Bank.DAL.Enums;
 using Bank.DTO.DTOs.ServiceBusDto;
@@ -8,27 +10,29 @@ using Core.DAL.Models.BankAccounts;
 using Core.DAL.Models.Cards;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 
 namespace Core.BL.MassTransit.Consumers
 {
-    public class BankAccountCreatedConsumerCore : IConsumer<CreateBankAccountEvent>
+    public class BankAccountCreatedConsumerCore : BaseConsumer<CreateBankAccountEvent>
     {
         private readonly CoreDbContext _coreDbContext;
 
-        public BankAccountCreatedConsumerCore(CoreDbContext coreDbContext)
+        public BankAccountCreatedConsumerCore(CoreDbContext coreDbContext, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+            : base(idempotencyService, serviceProvider)
         {
             _coreDbContext = coreDbContext;
         }
 
-        public async Task Consume(ConsumeContext<CreateBankAccountEvent> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(CreateBankAccountEvent message)
         {
-            var createBankAccountEvent = context.Message;
+            var createBankAccountEvent = message;
 
             bool creditBankAccountExists = await _coreDbContext.CreditBankAccounts.AnyAsync(x => x.Id == createBankAccountEvent.Id);
 
             if (creditBankAccountExists)
             {
-                return;
+                return new NoResponse();
             }
 
             if (createBankAccountEvent.AccountName == "MasterAccount")
@@ -45,14 +49,14 @@ namespace Core.BL.MassTransit.Consumers
 
             if (!userExists)
             {
-                return;
+                return new NoResponse();
             }
 
             bool tariffExists = await _coreDbContext.CreditTariffs.AnyAsync(x => x.Id == createBankAccountEvent.TariffId);
 
             if (!tariffExists)
             {
-                return;
+                return new NoResponse();
             }
 
             var currencyType = await _coreDbContext.Currencies.FirstOrDefaultAsync(x => x.VchCode == createBankAccountEvent.CurrencyType)
@@ -89,6 +93,13 @@ namespace Core.BL.MassTransit.Consumers
             await _coreDbContext.AddAsync(creditBankAccount);
 
             await _coreDbContext.SaveChangesAsync();
+
+            return new NoResponse();
+        }
+
+        protected override async Task SendResponse(ConsumeContext<CreateBankAccountEvent> context, baseResponse response)
+        {
+           
         }
     }
 }

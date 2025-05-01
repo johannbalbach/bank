@@ -7,5 +7,6 @@ namespace UserService.Interfaces
         public Task<IsUserBlockedCommand> GetIsUserBlocked(Guid UserId);
         public Task<IsUserExistCommand> GetIsUserExist(Guid UserId);
         public Task<GetUserRoleCommand> GetUserRole(Guid UserId);
+        public Task CreateUser(CreateUserEvent user);
     }
 }

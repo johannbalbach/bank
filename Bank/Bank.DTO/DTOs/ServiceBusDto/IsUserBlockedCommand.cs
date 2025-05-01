@@ -1,6 +1,6 @@
 ﻿namespace Bank.DTO.DTOs.ServiceBusDto
 {
-    public class IsUserBlockedCommand
+    public class IsUserBlockedCommand: baseResponse
     {
         public bool IsBlocked { get; set; }
     }

@@ -189,6 +189,26 @@ namespace Core.DAL.Migrations
                     b.ToTable("Currencies");
                 });
 
+            modelBuilder.Entity("Core.DAL.Models.DeviceToken", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeviceName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserRole")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId", "DeviceName");
+
+                    b.ToTable("DeviceTokens");
+                });
+
             modelBuilder.Entity("Core.DAL.Models.History.BankAccountOperationsHistory", b =>
                 {
                     b.Property<Guid>("BankAccountId")

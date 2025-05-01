@@ -1,10 +1,19 @@
-﻿using Bank.BL.ExceptionHandler;
+﻿using Bank.BL.Configuration;
+using Bank.BL.ExceptionHandler;
+using Bank.BL.Middlewares;
+using Bank.BL.OperationFilters;
 using Bank.BL.Options;
+using Bank.BL.Redis;
+using Bank.BL.Redis.Patterns;
+using Bank.BL.Services;
 using Bank.DAL.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 
@@ -99,12 +108,45 @@ namespace Bank.BL
                         new List<string>()
                     }
                 });
+                c.OperationFilter<AddIdempotencyHeaderOperationFilter>();
             });
         }
         public static void AddGlobalExceptionHandler(this IServiceCollection services)
         {
             services.AddExceptionHandler<GlobalExceptionHandler>();
             services.AddProblemDetails();
+        }
+
+        public static void AddIdempotencyService(this IServiceCollection services)
+        {
+            services.AddSingleton<IIdempotencyService, IdempotencyService>();
+        }
+        public static IApplicationBuilder UseUnstableMiddleware(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<UnstableMiddleware>();
+        }
+        public static IApplicationBuilder UseIdempotencyMiddleware(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<IdempotencyMiddleware>();
+        }
+
+        public static void AddRedis(this IServiceCollection services, IConfiguration configuration)
+        {
+            IConfigurationSection redisOptions = configuration.GetSection("RedisOptions");
+
+            services.Configure<RedisConfiguration>(configuration.GetSection(RedisConfiguration.Redis));
+            services.AddStackExchangeRedisCache(setupOptions =>
+            {
+                configuration.GetSection("RedisOptions").Bind(setupOptions);
+            });
+            services.AddSingleton(provider =>
+            {
+                var connection = ConnectionMultiplexer.Connect(redisOptions["Configuration"] ?? throw new Exception());
+                return connection;
+            });
+            services.AddSingleton<IRedisDatabaseProvider, RedisDatabaseProvider>();
+            services.AddScoped<IRedisMessagingService, RedisMessagingService>();
+            services.AddScoped<IRedisMessagingFacade, RedisMessagingFacade>();
         }
     }
 }

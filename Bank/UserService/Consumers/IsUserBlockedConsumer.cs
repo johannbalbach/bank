@@ -1,24 +1,28 @@
-﻿using Bank.DTO.DTOs.ServiceBusDto;
+﻿using Bank.BL.Consumer;
+using Bank.BL.Services;
+using Bank.DTO.DTOs.ServiceBusDto;
 using MassTransit;
 using UserService.Interfaces;
 
 namespace UserService.Consumers
 {
-    public class IsUserBlockedConsumer: IConsumer<IsUserBlockedRequest>
+    public class IsUserBlockedConsumer: BaseConsumer<IsUserBlockedRequest>
     {
         private readonly IUserRequestService _userService;
-        public IsUserBlockedConsumer(IUserRequestService userService)
+        public IsUserBlockedConsumer(IUserRequestService userService, IIdempotencyService idempotencyService, IServiceProvider serviceProvider)
+            : base(idempotencyService, serviceProvider)
         {
             _userService = userService;
         }
 
-        public async Task Consume(ConsumeContext<IsUserBlockedRequest> context)
+        protected override async Task<baseResponse> ProcessMessageAsync(IsUserBlockedRequest message)
         {
-            var req = new IsUserBlockedCommand();
-            if (context.Message.UserId != null)
-                req = await _userService.GetIsUserBlocked(context.Message.UserId);
+            return await _userService.GetIsUserBlocked(message.UserId);
+        }
 
-            await context.RespondAsync(req);
+        protected override async Task SendResponse(ConsumeContext<IsUserBlockedRequest> context, baseResponse response)
+        {
+            await context.RespondAsync((IsUserBlockedCommand)response);
         }
     }
 }
